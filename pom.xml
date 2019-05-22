@@ -74,7 +74,7 @@
     <dependency>
       <groupId>com.evolvedbinary.j8fu</groupId>
       <artifactId>j8fu</artifactId>
-      <version>1.21</version>
+      <version>1.22</version>
     </dependency>
 
     <dependency>
