@@ -76,6 +76,8 @@ public class ResolveMojo extends AbstractMojo {
                 throw new MojoFailureException("Each configured package must have a `name` or `abbrev`");
             }
 
+            getLog().info("Attempting to resolve package: " + pkg.toString());
+
             resolvePackage(pkg);
         }
     }
