@@ -42,19 +42,27 @@
     <project.build.target>1.8</project.build.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.version>3.5.2</maven.version>
+    <apache.httpcomponents.version>4.5.9</apache.httpcomponents.version>
+    <apache.httpcomponents.core.version>4.4.11</apache.httpcomponents.core.version>
   </properties>
 
   <dependencies>
 
     <dependency>
-      <groupId>org.apache.maven.shared</groupId>
-      <artifactId>file-management</artifactId>
-      <version>3.0.0</version>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-plugin-api</artifactId>
+      <version>${maven.version}</version>
     </dependency>
 
     <dependency>
       <groupId>org.apache.maven</groupId>
-      <artifactId>maven-plugin-api</artifactId>
+      <artifactId>maven-artifact</artifactId>
+      <version>${maven.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-core</artifactId>
       <version>${maven.version}</version>
     </dependency>
 
@@ -68,7 +76,19 @@
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>fluent-hc</artifactId>
-      <version>4.5.8</version>
+      <version>${apache.httpcomponents.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+      <version>${apache.httpcomponents.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpcore</artifactId>
+      <version>${apache.httpcomponents.core.version}</version>
     </dependency>
 
     <dependency>
@@ -83,10 +103,28 @@
       <version>3.0.2</version>
     </dependency>
 
+    <!-- test dependencies -->
+
     <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <version>5.4.2</version>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.12</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.maven.plugin-testing</groupId>
+      <artifactId>maven-plugin-testing-harness</artifactId>
+      <version>3.3.0</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- NOTE: needed for maven-plugin-testing-harness's org.apache.maven.plugin.testing.AbstractMojoTestCase -->
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-compat</artifactId>
+      <version>3.6.1</version>
+      <scope>test</scope>
     </dependency>
 
   </dependencies>
@@ -104,6 +142,34 @@
             <goals>
               <goal>set-properties</goal>
             </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.1.1</version>
+        <executions>
+          <execution>
+            <id>analyze</id>
+            <goals>
+              <goal>analyze-only</goal>
+            </goals>
+            <configuration>
+              <failOnWarning>true</failOnWarning>
+              <ignoredUnusedDeclaredDependencies>
+                <ignoredUnusedDeclaredDependency>org.apache.maven:maven-compat:jar</ignoredUnusedDeclaredDependency>
+              </ignoredUnusedDeclaredDependencies>
+              <ignoredUsedUndeclaredDependencies>
+                <!--
+                  NOTE: the maven-dependency-plugin insists that we need this, seems to be
+                  some sort of missing transient dependency for maven-invoker-plugin ITs
+                -->
+                <ignoredUsedUndeclaredDependency>org.eclipse.sisu:org.eclipse.sisu.plexus:jar</ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>org.apache.maven:maven-model:jar</ignoredUsedUndeclaredDependency>
+              </ignoredUsedUndeclaredDependencies>
+            </configuration>
           </execution>
         </executions>
       </plugin>

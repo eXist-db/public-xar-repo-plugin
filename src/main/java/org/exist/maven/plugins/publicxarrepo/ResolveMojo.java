@@ -154,7 +154,7 @@ public class ResolveMojo extends AbstractMojo {
 
     private String getFindUri(final Package pkg) {
         final StringBuilder builder = new StringBuilder();
-        builder.append(repoUri);
+        builder.append(getRepoUri());
         builder.append("/find?processor=");
         builder.append(existDbVersion);
         if (pkg.getName() != null) {
@@ -210,11 +210,15 @@ public class ResolveMojo extends AbstractMojo {
         }
     }
 
-    private String getPackageUri(final PackageInfo pkgInfo) {
+    protected String getPackageUri(final PackageInfo pkgInfo) {
         final StringBuilder builder = new StringBuilder();
-        builder.append(repoUri);
+        builder.append(getRepoUri());
         builder.append("/public/");
         builder.append(pkgInfo.getPath());
         return builder.toString();
+    }
+
+    protected String getRepoUri() {
+        return repoUri;
     }
 }

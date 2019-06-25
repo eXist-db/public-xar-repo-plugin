@@ -1,13 +1,11 @@
 package org.exist.maven.plugins.publicxarrepo;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.evolvedbinary.j8fu.function.RunnableE;
+import org.junit.Test;
 
+import static org.junit.Assert.*;
 
-@Execution(ExecutionMode.CONCURRENT)
 public class SemanticVersionTest {
 
     @Test
@@ -169,5 +167,14 @@ public class SemanticVersionTest {
         semanticVersion = SemanticVersion.parse("27.0.0-RC6.1.3+goodbye");
         assertEquals("goodbye", semanticVersion.getBuildLabel());
         assertEquals("27.0.0-RC6.1.3+goodbye", semanticVersion.toString());
+    }
+
+    private static <T extends Exception> void assertThrows(final Class<T> clazz, final RunnableE<T> lambda) {
+        try {
+            lambda.run();
+            fail("Excepted " + clazz.getName() + ", but no exception was thrown");
+        } catch (final Exception e) {
+            assertEquals(e.getMessage(), clazz, e.getClass());
+        }
     }
 }
