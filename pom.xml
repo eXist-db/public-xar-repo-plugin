@@ -44,6 +44,7 @@
     <maven.version>3.5.2</maven.version>
     <apache.httpcomponents.version>4.5.9</apache.httpcomponents.version>
     <apache.httpcomponents.core.version>4.4.11</apache.httpcomponents.core.version>
+    <junit.version>4.12</junit.version>
   </properties>
 
   <dependencies>
@@ -108,7 +109,7 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.12</version>
+      <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
 
@@ -276,6 +277,33 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-gpg-plugin</artifactId>
         <version>1.6</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-invoker-plugin</artifactId>
+        <version>3.2.0</version>
+        <configuration>
+          <cloneProjectsTo>${project.build.directory}/it</cloneProjectsTo>
+          <localRepositoryPath>${project.build.directory}/it-repo</localRepositoryPath>
+          <postBuildHookScript>verify</postBuildHookScript>
+        </configuration>
+        <executions>
+          <execution>
+            <id>integration-tests</id>
+            <goals>
+              <goal>install</goal>
+              <goal>run</goal>
+            </goals>
+          </execution>
+        </executions>
+        <dependencies>
+          <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+          </dependency>
+        </dependencies>
       </plugin>
 
     </plugins>

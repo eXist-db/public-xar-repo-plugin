@@ -1,0 +1,41 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.exist-db.maven.plugins.it.public-xar-repo-plugin</groupId>
+    <artifactId>resolve-functx</artifactId>
+    <version>1.0.0</version>
+
+    <name>Test Resolving FunctX Library</name>
+    <description>Integration Test for Resolving FunctX Library</description>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.exist-db.maven.plugins</groupId>
+                <artifactId>public-xar-repo-plugin</artifactId>
+                <version>@project.version@</version>
+                <executions>
+                    <execution>
+                        <id>fetch-xars</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>resolve</goal>
+                        </goals>
+                        <configuration>
+                            <existDbVersion>5.0.0-RC8</existDbVersion>
+                            <packages>
+                                <package>
+                                    <abbrev>functx</abbrev>
+                                    <version>1.0</version>
+                                </package>
+                            </packages>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
