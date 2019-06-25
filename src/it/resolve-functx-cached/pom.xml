@@ -4,11 +4,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.exist-db.maven.plugins.it.public-xar-repo-plugin</groupId>
-    <artifactId>resolve-functx</artifactId>
+    <artifactId>resolve-functx-cached</artifactId>
     <version>1.0.0</version>
 
-    <name>Test Resolving FunctX Library</name>
-    <description>Integration Test for Resolving FunctX Library</description>
+    <name>Test Resolving FunctX Library from Cache</name>
+    <description>Integration Test for Resolving FunctX Library from Cache</description>
 
     <build>
         <plugins>
@@ -24,7 +24,6 @@
                             <goal>resolve</goal>
                         </goals>
                         <configuration>
-                            <cache>false</cache>
                             <existDbVersion>5.0.0-RC8</existDbVersion>
                             <packages>
                                 <package>
