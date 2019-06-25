@@ -35,7 +35,7 @@ import static org.apache.http.HttpStatus.SC_OK;
 @Mojo(name = "resolve", defaultPhase = LifecyclePhase.GENERATE_SOURCES, threadSafe = true, requiresProject = false)
 public class ResolveMojo extends AbstractMojo {
 
-    @Parameter(required = true, defaultValue = "http://demo.exist-db.org/exist/apps/public-repo")
+    @Parameter(required = true, defaultValue = "http://exist-db.org/exist/apps/public-repo")
     private String repoUri;
 
     @Parameter(required = true)
