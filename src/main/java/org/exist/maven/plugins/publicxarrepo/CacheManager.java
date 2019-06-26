@@ -4,21 +4,22 @@ import com.evolvedbinary.j8fu.tuple.Tuple2;
 import org.apache.maven.plugin.logging.Log;
 
 import javax.annotation.Nullable;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.stream.StreamResult;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.Optional;
 
 import static com.evolvedbinary.j8fu.tuple.Tuple.Tuple;
 import static org.exist.maven.plugins.publicxarrepo.FileUtils.sha256;
+import static org.exist.maven.plugins.publicxarrepo.PackageInfo.METADATA_FILE_EXTENSION;
 
 public class CacheManager {
-    private static final Pattern PTN_FILENAME = Pattern.compile("([a-zA-Z0-9\\-_]+)-((?:[0-9]+)(?:\\.[0-9]+)?(?:\\.[0-9]+)?)\\.xar");
     private final Path dir;
     private final Log log;
 
@@ -62,9 +63,9 @@ public class CacheManager {
     }
 
     private @Nullable Tuple2<SemanticVersion, Path> getVersionFromCache(final Package pkg) throws IOException {
-        final List<Path> files;
-        try (final Stream<Path> fileStream = Files.list(dir)) {
-            files = fileStream.collect(Collectors.toList());
+        final List<PackageInfo> cachedPackageInfos = PackageDb.findPackageInfos(dir, getAbbrevAndOrName(pkg));
+        if (cachedPackageInfos.isEmpty()) {
+            return null;
         }
 
         final SemanticVersion pkgVersion = pkg.getVersion() != null ? SemanticVersion.parse(pkg.getVersion()) : null;
@@ -75,47 +76,38 @@ public class CacheManager {
         SemanticVersion latestVersion = SemanticVersion.parse("0.0.0");
         Path latestVersionPath = null;
 
-        for (final Path file : files) {
-            final String fileName = file.getFileName().toString();
-            final Matcher matcher = PTN_FILENAME.matcher(fileName);
-            if (matcher.matches()) {
-                final String filePackageName = matcher.group(1);
+        for (final PackageInfo cachedPackageInfo : cachedPackageInfos) {
 
-                //TODO(AR) file is not named based on abbrev or name - we need to look these up in a db
-                if (filePackageName.equals(pkg.getAbbrev()) || filePackageName.equals(pkg.getName())) {
+            final SemanticVersion filePackageVersion = SemanticVersion.parse(cachedPackageInfo.getVersion());
 
-                    final SemanticVersion filePackageVersion = SemanticVersion.parse(matcher.group(2));
+            /* check the filePackageVersion against pkg, if no version specified in pkg then get the latest */
 
-                    /* check the filePackageVersion against pkg, if no version specified in pkg then get the latest */
+            if (pkgVersion != null) {
+                if (pkgVersion.compareTo(filePackageVersion) == 0) {
+                    return Tuple(filePackageVersion, dir.resolve(cachedPackageInfo.getPath()));
+                }
 
-                    if (pkgVersion != null) {
-                        if (pkgVersion.compareTo(filePackageVersion) == 0) {
-                            return Tuple(filePackageVersion, file);
-                        }
+            } else if (pkgSemanticVersion != null) {
+                if (pkgSemanticVersion.compareTo(filePackageVersion) == 0) {
+                    return Tuple(filePackageVersion, dir.resolve(cachedPackageInfo.getPath()));
+                }
 
-                    } else if (pkgSemanticVersion != null) {
-                        if (pkgSemanticVersion.compareTo(filePackageVersion) == 0) {
-                            return Tuple(filePackageVersion, file);
-                        }
+            } else if (pkgSemanticVersionMin != null) {
+                if (pkgSemanticVersionMin.compareTo(filePackageVersion) <= 0 && filePackageVersion.compareTo(latestVersion) > 0) {
+                    latestVersion = filePackageVersion;
+                    latestVersionPath = dir.resolve(cachedPackageInfo.getPath());
+                }
 
-                    } else if (pkgSemanticVersionMin != null) {
-                        if (pkgSemanticVersionMin.compareTo(filePackageVersion) <= 0 && filePackageVersion.compareTo(latestVersion) > 0) {
-                            latestVersion = filePackageVersion;
-                            latestVersionPath = file;
-                        }
+            } else if (pkgSemanticVersionMax != null) {
+                if (pkgSemanticVersionMax.compareTo(filePackageVersion) >= 0 && filePackageVersion.compareTo(latestVersion) > 0) {
+                    latestVersion = filePackageVersion;
+                    latestVersionPath = dir.resolve(cachedPackageInfo.getPath());
+                }
 
-                    } else if (pkgSemanticVersionMax != null) {
-                        if (pkgSemanticVersionMax.compareTo(filePackageVersion) >= 0 && filePackageVersion.compareTo(latestVersion) > 0) {
-                            latestVersion = filePackageVersion;
-                            latestVersionPath = file;
-                        }
-
-                    } else {
-                        if (filePackageVersion.compareTo(latestVersion) > 0) {
-                            latestVersion = filePackageVersion;
-                            latestVersionPath = file;
-                        }
-                    }
+            } else {
+                if (filePackageVersion.compareTo(latestVersion) > 0) {
+                    latestVersion = filePackageVersion;
+                    latestVersionPath = dir.resolve(cachedPackageInfo.getPath());
                 }
             }
         }
@@ -127,7 +119,32 @@ public class CacheManager {
         return Tuple(latestVersion, latestVersionPath);
     }
 
-    public void put(final Path path) throws IOException {
-        Files.copy(path, dir.resolve(path.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+    public void put(final Package pkg, final PackageInfo pkgInfo, final Path path) throws IOException {
+        final Path destFile = dir.resolve(path.getFileName());
+        try (final FileOutputStream os = new FileOutputStream(destFile.toFile(), false)) {
+            final FileLock lock = os.getChannel().lock();
+            try {
+                Files.copy(path, os);
+                serialize(pkgInfo, destFile.resolveSibling(destFile.getFileName().toString() + METADATA_FILE_EXTENSION));
+            } finally {
+                lock.close();
+            }
+        }
+        PackageDb.addPackageInfo(dir, getAbbrevAndOrName(pkg), pkgInfo);
+    }
+
+    private PackageDb.AbbrevAndOrName getAbbrevAndOrName(final Package pkg) {
+        final Optional<String> abbrev = Optional.ofNullable(pkg.getAbbrev()).filter(s -> !s.isEmpty());
+        final Optional<String> name = Optional.ofNullable(pkg.getAbbrev()).filter(s -> !s.isEmpty());
+        return new PackageDb.AbbrevAndOrName(abbrev, name);
+    }
+
+    private void serialize(final PackageInfo pkgInfo, final Path path) throws IOException {
+        try {
+            final StreamResult result = new StreamResult(path.toString());
+            pkgInfo.serialize(result);
+        } catch (final ParserConfigurationException | TransformerException e) {
+            throw new IOException(e);
+        }
     }
 }

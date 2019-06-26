@@ -18,7 +18,6 @@ import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
@@ -31,6 +30,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.apache.http.HttpStatus.SC_OK;
+import static org.exist.maven.plugins.publicxarrepo.XmlUtils.DOCUMENT_BUILDER_FACTORY;
 
 @Mojo(name = "resolve", defaultPhase = LifecyclePhase.GENERATE_SOURCES, threadSafe = true, requiresProject = false)
 public class ResolveMojo extends AbstractMojo {
@@ -61,11 +61,9 @@ public class ResolveMojo extends AbstractMojo {
     private MavenSession session;
 
     private final PoolingHttpClientConnectionManager poolingHttpClientConnectionManager = new PoolingHttpClientConnectionManager();
-    private final DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
 
     public ResolveMojo() {
         poolingHttpClientConnectionManager.setDefaultMaxPerRoute(15);
-        documentBuilderFactory.setNamespaceAware(true);
     }
 
     @Override
@@ -100,21 +98,35 @@ public class ResolveMojo extends AbstractMojo {
             Path path = cacheManager != null ? cacheManager.get(pkg, pkgInfo) : null;
             if (path != null) {
                 Files.copy(path, outputDirectory.toPath().resolve(path.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+                if (pkgInfo == null) {
+                    if (session.isOffline()) {
+                        getLog().warn("Maven is operating in offline mode, so package version could not be checked with remote repo!");
+                    } else {
+                        getLog().warn("Could not check version with remote repo, no remote info available!");
+                    }
+                }
                 getLog().info("Resolved package from cache: " + path.getFileName());
                 return;
             }
 
             if (session.isOffline()) {
-                throw new MojoFailureException("Cannot resolve packages when in offline mode");
+                throw new MojoFailureException("Cannot resolve packages from remote when in offline mode.");
             }
 
             path = downloadPackage(pkgInfo);
+
+            // validate the checksum of the downloaded file
+            final String pathChecksum = FileUtils.sha256(path);
+            if (!pkgInfo.getSha256().equals(pathChecksum)) {
+                throw new MojoFailureException("Downloaded file does not match PackageInfo checksum: expected=" + pkgInfo.getSha256() + ", actual=" + pathChecksum);
+            }
+
             Files.createDirectories(outputDirectory.toPath());
             path = Files.move(path, outputDirectory.toPath().resolve(pkgInfo.getPath()), StandardCopyOption.ATOMIC_MOVE);
             getLog().info("Resolved package from server: " + path.getFileName());
 
             if (cacheManager != null) {
-                cacheManager.put(path);
+                cacheManager.put(pkg, pkgInfo, path);
             }
         } catch (final IOException e) {
             throw new MojoExecutionException(e.getMessage(), e);
@@ -137,7 +149,7 @@ public class ResolveMojo extends AbstractMojo {
                 throw new MojoExecutionException("Unable to get package info");
             }
 
-            final DocumentBuilder builder = documentBuilderFactory.newDocumentBuilder();
+            final DocumentBuilder builder = DOCUMENT_BUILDER_FACTORY.newDocumentBuilder();
             try (final InputStream is = response.getEntity().getContent()) {
                 final Document document = builder.parse(is);
                 final Element root = document.getDocumentElement();
