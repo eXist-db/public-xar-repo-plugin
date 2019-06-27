@@ -33,6 +33,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -139,7 +140,7 @@ public class ResolveMojo extends AbstractMojo {
             }
 
             Files.createDirectories(outputDirectory.toPath());
-            path = Files.move(path, outputDirectory.toPath().resolve(pkgInfo.getPath()), StandardCopyOption.ATOMIC_MOVE);
+            path = moveFile(path, outputDirectory.toPath().resolve(pkgInfo.getPath()));
             getLog().info("Resolved package from server: " + path.getFileName());
 
             if (cacheManager != null) {
@@ -147,6 +148,15 @@ public class ResolveMojo extends AbstractMojo {
             }
         } catch (final IOException e) {
             throw new MojoExecutionException(e.getMessage(), e);
+        }
+    }
+
+    private Path moveFile(Path source, Path target) throws IOException {
+        try {
+            return Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException notSupported) {
+            getLog().info("Atomic move from: " + source + " to " + target + " failed. Retry using non atomic move...");
+            return Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
