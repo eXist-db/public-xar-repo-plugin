@@ -98,6 +98,7 @@ public class ResolveMojo extends AbstractMojo {
     }
 
     private void resolvePackage(final Package pkg) throws MojoExecutionException, MojoFailureException {
+        final Path outputDirectoryPath = outputDirectory.toPath();
         try {
             final CacheManager cacheManager;
             if (cache) {
@@ -114,7 +115,10 @@ public class ResolveMojo extends AbstractMojo {
 
             Path path = cacheManager != null ? cacheManager.get(pkg, pkgInfo) : null;
             if (path != null) {
-                Files.copy(path, outputDirectory.toPath().resolve(path.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+                if (!Files.exists(outputDirectoryPath)) {
+                    Files.createDirectories(outputDirectoryPath);
+                }
+                Files.copy(path, outputDirectoryPath.resolve(path.getFileName()), StandardCopyOption.REPLACE_EXISTING);
                 if (pkgInfo == null) {
                     if (session.isOffline()) {
                         getLog().warn("Maven is operating in offline mode, so package version could not be checked with remote repo!");
@@ -138,8 +142,10 @@ public class ResolveMojo extends AbstractMojo {
                 throw new MojoFailureException("Downloaded file does not match PackageInfo checksum: expected=" + pkgInfo.getSha256() + ", actual=" + pathChecksum);
             }
 
-            Files.createDirectories(outputDirectory.toPath());
-            path = Files.move(path, outputDirectory.toPath().resolve(pkgInfo.getPath()), StandardCopyOption.ATOMIC_MOVE);
+            if (!Files.exists(outputDirectoryPath)) {
+                Files.createDirectories(outputDirectoryPath);
+            }
+            path = Files.move(path, outputDirectoryPath.resolve(pkgInfo.getPath()), StandardCopyOption.ATOMIC_MOVE);
             getLog().info("Resolved package from server: " + path.getFileName());
 
             if (cacheManager != null) {
