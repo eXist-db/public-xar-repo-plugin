@@ -69,6 +69,9 @@ public class ResolveMojo extends AbstractMojo {
     @Parameter(required = true)
     private List<Package> packages;
 
+    @Parameter(property = "xar.resolve.offline", defaultValue = "false")
+    public boolean offline;
+
     @Parameter(property = "session")
     private MavenSession session;
 
@@ -112,7 +115,7 @@ public class ResolveMojo extends AbstractMojo {
                 cacheManager = null;
             }
 
-            final PackageInfo pkgInfo = session.isOffline() ? null : getPackageInfo(pkg);
+            final PackageInfo pkgInfo = offline || session.isOffline() ? null : getPackageInfo(pkg);
 
             Path path = cacheManager != null ? cacheManager.get(pkg, pkgInfo) : null;
             if (path != null) {
@@ -121,8 +124,8 @@ public class ResolveMojo extends AbstractMojo {
                 }
                 Files.copy(path, outputDirectoryPath.resolve(path.getFileName()), StandardCopyOption.REPLACE_EXISTING);
                 if (pkgInfo == null) {
-                    if (session.isOffline()) {
-                        getLog().warn("Maven is operating in offline mode, so package version could not be checked with remote repo!");
+                    if (offline || session.isOffline()) {
+                        getLog().warn("ReloveMojo is operating in offline mode, so package version could not be checked with remote repo!");
                     } else {
                         getLog().warn("Could not check version with remote repo, no remote info available!");
                     }
@@ -131,7 +134,7 @@ public class ResolveMojo extends AbstractMojo {
                 return;
             }
 
-            if (session.isOffline()) {
+            if (offline || session.isOffline()) {
                 throw new MojoFailureException("Cannot resolve packages from remote when in offline mode.");
             }
 
