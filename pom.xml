@@ -42,7 +42,7 @@
     <project.build.target>1.8</project.build.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.version>3.5.2</maven.version>
-    <apache.httpcomponents.version>4.5.11</apache.httpcomponents.version>
+    <apache.httpcomponents.version>4.5.12</apache.httpcomponents.version>
     <apache.httpcomponents.core.version>4.4.13</apache.httpcomponents.core.version>
     <junit.version>4.13</junit.version>
   </properties>
