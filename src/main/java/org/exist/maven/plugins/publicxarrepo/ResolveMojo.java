@@ -125,7 +125,7 @@ public class ResolveMojo extends AbstractMojo {
                 Files.copy(path, outputDirectoryPath.resolve(path.getFileName()), StandardCopyOption.REPLACE_EXISTING);
                 if (pkgInfo == null) {
                     if (offline || session.isOffline()) {
-                        getLog().warn("ReloveMojo is operating in offline mode, so package version could not be checked with remote repo!");
+                        getLog().warn("ResolveMojo is operating in offline mode, so package version could not be checked with remote repo!");
                     } else {
                         getLog().warn("Could not check version with remote repo, no remote info available!");
                     }
