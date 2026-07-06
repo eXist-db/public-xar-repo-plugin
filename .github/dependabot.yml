@@ -11,6 +11,7 @@ updates:
         dependency-type: development
         patterns:
           - "junit:*"
+          - "org.slf4j:*"
           - "org.apache.maven.plugin-testing:*"
           - "org.apache.maven:maven-compat"
       maven-apis:
