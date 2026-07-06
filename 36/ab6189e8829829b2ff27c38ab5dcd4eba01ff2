@@ -1,0 +1,19 @@
+README.md
+  s_ab16d441d1d73d::t_227a038dcff149 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "36ab6189e8829829b2ff27c38ab5dcd4eba01ff2",
+  "prompts": {},
+  "sessions": {
+    "s_ab16d441d1d73d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5b8b7e54-82c6-4ea4-8a72-080c0b71fdb3",
+        "model": "default"
+      },
+      "human_author": "duncdrum <d.paterson@me.com>"
+    }
+  }
+}
