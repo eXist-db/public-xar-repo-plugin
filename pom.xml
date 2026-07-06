@@ -44,7 +44,6 @@
     <maven.version>3.9.16</maven.version>
     <maven.plugin.tools.version>3.15.2</maven.plugin.tools.version>
     <apache.httpcomponents.version>4.5.14</apache.httpcomponents.version>
-    <apache.httpcomponents.core.version>4.4.16</apache.httpcomponents.core.version>
     <junit.version>4.13.2</junit.version>
     <slf4j.version>1.7.36</slf4j.version>
   </properties>
@@ -103,12 +102,6 @@
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpclient</artifactId>
       <version>${apache.httpcomponents.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.httpcomponents</groupId>
-      <artifactId>httpcore</artifactId>
-      <version>${apache.httpcomponents.core.version}</version>
     </dependency>
 
     <dependency>
@@ -202,6 +195,8 @@
                 -->
                 <ignoredUsedUndeclaredDependency>org.eclipse.sisu:org.eclipse.sisu.plexus:jar</ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>org.apache.maven:maven-model:jar</ignoredUsedUndeclaredDependency>
+                <!-- transitive of httpclient; version aligned via ${apache.httpcomponents.version} -->
+                <ignoredUsedUndeclaredDependency>org.apache.httpcomponents:httpcore:jar</ignoredUsedUndeclaredDependency>
               </ignoredUsedUndeclaredDependencies>
               <ignoredNonTestScopedDependencies>
                 <!-- transitive dependency of the Maven APIs; only referenced by test infrastructure -->
