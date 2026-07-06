@@ -1,0 +1,21 @@
+README.md
+  s_ab16d441d1d73d::t_7be9e0ceef2c92 123
+src/main/java/org/exist/maven/plugins/publicxarrepo/XmlUtils.java
+  s_ab16d441d1d73d::t_d02c2790155a6c 12-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "34019a3b76e9e77eb0be3feee53d2db3dec3835f",
+  "prompts": {},
+  "sessions": {
+    "s_ab16d441d1d73d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5b8b7e54-82c6-4ea4-8a72-080c0b71fdb3",
+        "model": "default"
+      },
+      "human_author": "duncdrum <d.paterson@me.com>"
+    }
+  }
+}
