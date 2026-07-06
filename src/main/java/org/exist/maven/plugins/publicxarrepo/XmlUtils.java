@@ -3,7 +3,10 @@ package org.exist.maven.plugins.publicxarrepo;
 import org.w3c.dom.Document;
 
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.*;
+import javax.xml.transform.Result;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 
 import static javax.xml.transform.OutputKeys.*;
