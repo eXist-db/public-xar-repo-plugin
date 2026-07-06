@@ -47,6 +47,11 @@ import static org.exist.maven.plugins.publicxarrepo.XmlUtils.DOCUMENT_BUILDER_FA
 @Mojo(name = "resolve", defaultPhase = LifecyclePhase.GENERATE_SOURCES, threadSafe = true, requiresProject = false)
 public class ResolveMojo extends AbstractMojo {
 
+    private static final int CONNECT_TIMEOUT_MS = 10_000;
+    private static final int SOCKET_TIMEOUT_MS = 30_000;
+    private static final int MAX_ATTEMPTS = 3;
+    private static final long INITIAL_RETRY_DELAY_MS = 2_000;
+
     @Parameter(required = true, defaultValue = "http://exist-db.org/exist/apps/public-repo")
     private String repoUri;
 
@@ -104,60 +109,119 @@ public class ResolveMojo extends AbstractMojo {
     private void resolvePackage(final Package pkg) throws MojoExecutionException, MojoFailureException {
         final Path outputDirectoryPath = outputDirectory.toPath();
         try {
-            final CacheManager cacheManager;
-            if (cache) {
-                final Path cacheDir = Optional.ofNullable(cacheDirectory).map(File::toPath)
-                        .orElseGet(() -> Paths.get(this.session.getLocalRepository().getBasedir()).resolve(".cache").resolve("public-xar-repo-plugin"));
-                getLog().debug("Cache is: " + cacheDir.toAbsolutePath().toString());
-                Files.createDirectories(cacheDir);
-                cacheManager = new CacheManager(cacheDir, getLog());
-            } else {
-                cacheManager = null;
-            }
+            final CacheManager cacheManager = cache ? newCacheManager() : null;
+            final boolean isOffline = offline || (session != null && session.isOffline());
 
-            final PackageInfo pkgInfo = offline || session.isOffline() ? null : getPackageInfo(pkg);
+            /* If the remote repo cannot be reached, fall back to the cache (if enabled)
+               rather than failing the build: the cache may still hold a usable version. */
+            final PackageInfo pkgInfo = isOffline ? null : getPackageInfoOrNull(pkg);
 
-            Path path = cacheManager != null ? cacheManager.get(pkg, pkgInfo) : null;
-            if (path != null) {
-                if (!Files.exists(outputDirectoryPath)) {
-                    Files.createDirectories(outputDirectoryPath);
-                }
-                Files.copy(path, outputDirectoryPath.resolve(path.getFileName()), StandardCopyOption.REPLACE_EXISTING);
-                if (pkgInfo == null) {
-                    if (offline || session.isOffline()) {
-                        getLog().warn("ResolveMojo is operating in offline mode, so package version could not be checked with remote repo!");
-                    } else {
-                        getLog().warn("Could not check version with remote repo, no remote info available!");
-                    }
-                }
-                getLog().info("Resolved package from cache: " + path.getFileName());
+            if (serveFromCache(cacheManager, pkg, pkgInfo, outputDirectoryPath, isOffline)) {
                 return;
             }
 
-            if (offline || session.isOffline()) {
+            if (isOffline) {
                 throw new MojoFailureException("Cannot resolve packages from remote when in offline mode.");
             }
 
-            path = downloadPackage(pkgInfo);
-
-            // validate the checksum of the downloaded file
-            final String pathChecksum = FileUtils.sha256(path);
-            if (!pkgInfo.getSha256().equals(pathChecksum)) {
-                throw new MojoFailureException("Downloaded file does not match PackageInfo checksum: expected=" + pkgInfo.getSha256() + ", actual=" + pathChecksum);
+            if (pkgInfo == null) {
+                throw new MojoFailureException("Unable to resolve package " + pkg + ": the remote repo is unreachable and no suitable cached copy is available.");
             }
 
-            if (!Files.exists(outputDirectoryPath)) {
-                Files.createDirectories(outputDirectoryPath);
-            }
-            path = moveFile(path, outputDirectoryPath.resolve(pkgInfo.getPath()));
-            getLog().info("Resolved package from server: " + path.getFileName());
-
-            if (cacheManager != null) {
-                cacheManager.put(pkg, pkgInfo, path);
-            }
+            downloadAndStore(cacheManager, pkg, pkgInfo, outputDirectoryPath);
         } catch (final IOException e) {
             throw new MojoExecutionException(e.getMessage(), e);
         }
+    }
+
+    /**
+     * Download the package from the remote repo, validate its checksum, move it
+     * into the output directory, and record it in the cache (if enabled).
+     *
+     * @param cacheManager the cache manager, or null if caching is disabled.
+     * @param pkg the requested package.
+     * @param pkgInfo the info about the package to download.
+     * @param outputDirectoryPath the directory to move the package to.
+     */
+    private void downloadAndStore(@Nullable final CacheManager cacheManager, final Package pkg,
+            final PackageInfo pkgInfo, final Path outputDirectoryPath)
+            throws MojoExecutionException, MojoFailureException, IOException {
+        Path path = downloadPackage(pkgInfo);
+
+        // validate the checksum of the downloaded file
+        final String pathChecksum = FileUtils.sha256(path);
+        if (!pkgInfo.getSha256().equals(pathChecksum)) {
+            throw new MojoFailureException("Downloaded file does not match PackageInfo checksum: expected=" + pkgInfo.getSha256() + ", actual=" + pathChecksum);
+        }
+
+        if (!Files.exists(outputDirectoryPath)) {
+            Files.createDirectories(outputDirectoryPath);
+        }
+        path = moveFile(path, outputDirectoryPath.resolve(pkgInfo.getPath()));
+        getLog().info("Resolved package from server: " + path.getFileName());
+
+        if (cacheManager != null) {
+            cacheManager.put(pkg, pkgInfo, path);
+        }
+    }
+
+    private CacheManager newCacheManager() throws IOException {
+        final Path cacheDir = Optional.ofNullable(cacheDirectory).map(File::toPath)
+                .orElseGet(() -> Paths.get(this.session.getLocalRepository().getBasedir()).resolve(".cache").resolve("public-xar-repo-plugin"));
+        getLog().debug("Cache is: " + cacheDir.toAbsolutePath().toString());
+        Files.createDirectories(cacheDir);
+        return new CacheManager(cacheDir, getLog());
+    }
+
+    /**
+     * Retrieve the package info from the remote repo, or return null if the
+     * repo cannot be reached, so that the caller can fall back to the cache.
+     *
+     * @param pkg the package to retrieve info for.
+     *
+     * @return the package info, or null if the remote repo is unreachable.
+     */
+    private @Nullable PackageInfo getPackageInfoOrNull(final Package pkg) {
+        try {
+            return getPackageInfo(pkg);
+        } catch (final MojoExecutionException e) {
+            getLog().warn("Unable to retrieve package info from remote repo: " + e.getMessage() + ". Falling back to the local cache...");
+            return null;
+        }
+    }
+
+    /**
+     * Attempt to satisfy the package request from the cache.
+     *
+     * @param cacheManager the cache manager, or null if caching is disabled.
+     * @param pkg the requested package.
+     * @param pkgInfo the latest info about the package, or null if not available.
+     * @param outputDirectoryPath the directory to copy the package to.
+     * @param isOffline true if operating in offline mode.
+     *
+     * @return true if the package was served from the cache.
+     */
+    private boolean serveFromCache(@Nullable final CacheManager cacheManager, final Package pkg,
+            @Nullable final PackageInfo pkgInfo, final Path outputDirectoryPath, final boolean isOffline)
+            throws IOException {
+        final Path path = cacheManager != null ? cacheManager.get(pkg, pkgInfo) : null;
+        if (path == null) {
+            return false;
+        }
+
+        if (!Files.exists(outputDirectoryPath)) {
+            Files.createDirectories(outputDirectoryPath);
+        }
+        Files.copy(path, outputDirectoryPath.resolve(path.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+        if (pkgInfo == null) {
+            if (isOffline) {
+                getLog().warn("ResolveMojo is operating in offline mode, so package version could not be checked with remote repo!");
+            } else {
+                getLog().warn("Could not check version with remote repo, no remote info available!");
+            }
+        }
+        getLog().info("Resolved package from cache: " + path.getFileName());
+        return true;
     }
 
     private Path moveFile(Path source, Path target) throws IOException {
@@ -187,7 +251,9 @@ public class ResolveMojo extends AbstractMojo {
     }
 
     private Request buildGetRequest(@Nullable final Proxy proxy, final String uri) {
-        Request request = Request.Get(uri);
+        Request request = Request.Get(uri)
+                .connectTimeout(CONNECT_TIMEOUT_MS)
+                .socketTimeout(SOCKET_TIMEOUT_MS);
         if (proxy != null) {
             final HttpHost proxyHttpHost = new HttpHost(proxy.getHost(), proxy.getPort());
             request = request.viaProxy(proxyHttpHost);
@@ -195,8 +261,55 @@ public class ResolveMojo extends AbstractMojo {
         return request;
     }
 
+    /**
+     * Execute a GET request, retrying on I/O errors and HTTP 5xx server errors
+     * with exponential backoff. Non-5xx responses (including 404) are considered
+     * definitive and returned to the caller without retrying.
+     *
+     * @param executor the HTTP executor to use.
+     * @param proxy the proxy to route the request via, or null.
+     * @param uri the URI to GET.
+     *
+     * @return the HTTP response.
+     *
+     * @throws IOException if all attempts fail with an I/O error or server error.
+     */
+    private HttpResponse executeWithRetry(final Executor executor, @Nullable final Proxy proxy, final String uri) throws IOException {
+        IOException lastIoException = null;
+        String lastError = null;
+        long delay = INITIAL_RETRY_DELAY_MS;
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                final HttpResponse response = executor.execute(buildGetRequest(proxy, uri)).returnResponse();
+                final int statusCode = response.getStatusLine().getStatusCode();
+                if (statusCode < 500) {
+                    return response;
+                }
+                lastIoException = null;
+                lastError = "HTTP " + statusCode;
+            } catch (final IOException e) {
+                lastIoException = e;
+                lastError = e.getMessage();
+            }
+            if (attempt < MAX_ATTEMPTS) {
+                getLog().warn("Attempt " + attempt + " of " + MAX_ATTEMPTS + " failed for " + uri + " (" + lastError + "), retrying in " + (delay / 1000) + "s...");
+                try {
+                    Thread.sleep(delay);
+                } catch (final InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Interrupted while waiting to retry: " + uri, e);
+                }
+                delay *= 2;
+            }
+        }
+        if (lastIoException != null) {
+            throw lastIoException;
+        }
+        throw new IOException("Received " + lastError + " from " + uri + " after " + MAX_ATTEMPTS + " attempts");
+    }
+
     private PackageInfo getPackageInfo(final Package pkg) throws MojoExecutionException {
-        getLog().info("Retrieving package info for " + pkg.getName() != null ? pkg.getName() : pkg.getAbbrev());
+        getLog().info("Retrieving package info for " + (pkg.getName() != null ? pkg.getName() : pkg.getAbbrev()));
         try {
             final String uri = getFindUri(pkg) + "&info=true";
             @Nullable final Proxy proxy = MojoUtils.getProxyForUrl(proxies.get(), uri);
@@ -204,9 +317,7 @@ public class ResolveMojo extends AbstractMojo {
             final CloseableHttpClient client = buildHttpClient(proxy);
             final Executor executor = Executor.newInstance(client);
 
-            final Request request = buildGetRequest(proxy, uri);
-
-            final HttpResponse response = executor.execute(request).returnResponse();
+            final HttpResponse response = executeWithRetry(executor, proxy, uri);
             if (response.getStatusLine().getStatusCode() != SC_OK) {
                 getLog().error("Received HTTP " + response.getStatusLine().getStatusCode() + " when trying to access: " + uri);
                 throw new MojoExecutionException("Unable to get package info");
@@ -268,8 +379,7 @@ public class ResolveMojo extends AbstractMojo {
             final Executor executor = Executor.newInstance(client);
 
             getLog().info("Downloading " + uri);
-            final Request request = buildGetRequest(proxy, uri);
-            final HttpResponse response = executor.execute(request).returnResponse();
+            final HttpResponse response = executeWithRetry(executor, proxy, uri);
             if (response.getStatusLine().getStatusCode() != SC_OK) {
                 getLog().error("Received HTTP " + response.getStatusLine().getStatusCode() + " when trying to access: " + uri);
                 throw new MojoExecutionException("Unable to download package: " + pkgInfo.getPath());

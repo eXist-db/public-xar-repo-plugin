@@ -25,7 +25,9 @@ if (!Files.exists(functxXar)) {
     return false
 }
 
-functxXar.withInputStream() { actualIs ->
+// Files.newInputStream + withCloseable instead of Path.withInputStream: the
+// groovy-nio extension methods are not on maven-invoker-plugin's Groovy runtime
+Files.newInputStream(functxXar).withCloseable { actualIs ->
     assertEquals("da85074ce5edbeceeaa56c431b7f551e6862dfd83b901670072b6b683266e74f", checksum(actualIs))
 }
 
