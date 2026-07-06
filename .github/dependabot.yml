@@ -1,13 +1,45 @@
 version: 2
 updates:
-- package-ecosystem: maven
-  directory: "/"
-  schedule:
-    interval: daily
-    time: "03:00"
-  open-pull-requests-limit: 10
-- package-ecosystem: github-actions
-  directory: "/"
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 5
+  - package-ecosystem: maven
+    directory: "/"
+    schedule:
+      interval: daily
+      time: "03:00"
+    open-pull-requests-limit: 10
+    groups:
+      test-dependencies:
+        dependency-type: development
+        patterns:
+          - "junit:*"
+          - "org.slf4j:*"
+          - "org.apache.maven.plugin-testing:*"
+          - "org.apache.maven:maven-compat"
+      maven-apis:
+        patterns:
+          - "org.apache.maven:*"
+      maven-plugin-tools:
+        patterns:
+          - "org.apache.maven.plugin-tools:*"
+      apache-httpclient:
+        patterns:
+          - "org.apache.httpcomponents:*"
+      maven-build-plugins:
+        patterns:
+          - "org.apache.maven.plugins:*"
+          - "com.code54.mojo:*"
+          - "org.sonatype.central:*"
+      runtime-libraries:
+        patterns:
+          - "commons-io:*"
+          - "com.evolvedbinary.j8fu:*"
+          - "com.google.code.findbugs:*"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"

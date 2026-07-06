@@ -8,15 +8,11 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.Result;
-import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
-import javax.xml.transform.dom.DOMSource;
 
 import java.io.IOException;
 
-import static javax.xml.transform.OutputKeys.*;
 import static org.exist.maven.plugins.publicxarrepo.XmlUtils.DOCUMENT_BUILDER_FACTORY;
-import static org.exist.maven.plugins.publicxarrepo.XmlUtils.TRANSFORMER_FACTORY;
 
 public class PackageInfo {
 
