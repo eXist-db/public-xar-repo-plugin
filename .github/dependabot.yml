@@ -27,9 +27,7 @@ updates:
         patterns:
           - "org.apache.maven.plugins:*"
           - "com.code54.mojo:*"
-      parent-pom:
-        patterns:
-          - "org.sonatype.oss:*"
+          - "org.sonatype.central:*"
       runtime-libraries:
         patterns:
           - "commons-io:*"
