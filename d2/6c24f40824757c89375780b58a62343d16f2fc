@@ -1,0 +1,23 @@
+.github/dependabot.yml
+  s_ab16d441d1d73d::t_3462c09a99383d 14
+pom.xml
+  s_ab16d441d1d73d::t_92e9b9edda2bfb 58,65,72,79,86
+  s_ab16d441d1d73d::t_a737b5dcb2d916 156-163
+  s_ab16d441d1d73d::t_46e7e37c5eac97 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d26c24f40824757c89375780b58a62343d16f2fc",
+  "prompts": {},
+  "sessions": {
+    "s_ab16d441d1d73d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5b8b7e54-82c6-4ea4-8a72-080c0b71fdb3",
+        "model": "default"
+      },
+      "human_author": "duncdrum <d.paterson@me.com>"
+    }
+  }
+}
