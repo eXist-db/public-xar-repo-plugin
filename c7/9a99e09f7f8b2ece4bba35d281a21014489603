@@ -1,0 +1,19 @@
+pom.xml
+  s_ab16d441d1d73d::t_d051fc30021c7c 198-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c79a99e09f7f8b2ece4bba35d281a21014489603",
+  "prompts": {},
+  "sessions": {
+    "s_ab16d441d1d73d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5b8b7e54-82c6-4ea4-8a72-080c0b71fdb3",
+        "model": "default"
+      },
+      "human_author": "duncdrum <d.paterson@me.com>"
+    }
+  }
+}
