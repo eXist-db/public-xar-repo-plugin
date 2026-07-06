@@ -7,7 +7,6 @@
 
 A Maven plugin for resolving EXPath Packages from the Public Repo.
 
-
 ## Example Use
 
 For example if you wanted to download the latest version of the `functx` and `markdown` packages from the eXist-db Public Repository for eXist-db version 4.7.0, you would place the following in your `pom.xml` file:
@@ -121,6 +120,6 @@ mvn release:perform
 git push && git push --tags
 ```
 
-The build uploads artifacts to the Central Portal and waits until they are **validated**. Log in at https://central.sonatype.com/ to review the deployment and publish it to Maven Central when ready.
+The build uploads artifacts to the Central Portal and waits until they are **validated**. Log in at the [Central Portal](https://central.sonatype.com/) to review the deployment and publish it to Maven Central when ready.
 
 See also the [official Maven publishing guide](https://central.sonatype.org/publish/publish-portal-maven/).
