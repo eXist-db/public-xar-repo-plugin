@@ -1,3 +1,10 @@
 .idea/
+.zed/
+.vscode/
+
+.cursor/
+.moderne/
+.claude/
+
 *.iml
 target/
