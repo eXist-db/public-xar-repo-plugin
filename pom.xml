@@ -39,7 +39,7 @@
     <project.build.source>1.8</project.build.source>
     <project.build.target>1.8</project.build.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.version>3.9.16</maven.version>
+    <maven.version>3.10.0</maven.version>
     <maven.plugin.tools.version>3.16.0</maven.plugin.tools.version>
     <apache.httpcomponents.version>4.5.14</apache.httpcomponents.version>
     <junit.version>4.13.2</junit.version>
